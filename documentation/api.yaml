@@ -1,0 +1,247 @@
+openapi: '3.0.0'
+
+info:
+  version: 1.0.0
+  title: Image microservice
+  description: The management of the different endpoints for images.
+servers:
+  - url: http://localhost:3005/
+  - url: http://lab-pre.rtve.es/lab/api-file-manager/v1/
+tags:
+  - name: images
+    description: |
+      The images that will be used in the different parts , will be handled here.
+paths:
+  /ftp/upload/:
+    post:
+      tags:
+        - images
+      description: |
+        Endpoint for save image in server.
+      operationId: saveImage
+      requestBody:
+        description: Post to add image to the store
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DataImage'
+      responses:
+        '200':
+          description: Image response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseImage'
+        '400 (1)':
+          $ref: '#/components/responses/BadRequestErrorvalidationFileData'
+        '400 (2)':
+          $ref: '#/components/responses/BadRequestErrorvalidationLocationData'
+        '400 (3)':
+          $ref: '#/components/responses/BadRequestErrorextensionFile'
+        '400 (4)':
+          $ref: '#/components/responses/BadRequestErrorweightFile'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /ftp/remove/{location}/{name}:
+    delete:
+      security:
+        - basicAuth : []
+      tags:
+        - images
+      description: delete a single image
+      operationId: deleteImage
+      parameters:
+        - name: location
+          in: path
+          description: The resource directory's location
+          required: true
+          schema:
+            type: string
+          examples:
+            one:
+              value: "directoryX"
+            two:
+              value: "directoryA"
+        - name: name
+          in: path
+          description: The specific file's name
+          required: true
+          schema:
+            type: string
+          examples:
+            one:
+              value: "imageName"
+            two:
+              value: "nameImage"
+      responses:
+        '204':
+          description: image deleted
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /upload/image/:
+    post:
+      tags:
+        - images
+      description: |
+        Endpoint for save image in local project.
+      operationId: saveImageInLocal
+      requestBody:
+        description: Post to add image to the folder
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DataImage'
+      responses:
+        '200':
+          description: Image response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseImage'
+        '400 (1)':
+          $ref: '#/components/responses/BadRequestErrorvalidationFileData'
+        '400 (2)':
+          $ref: '#/components/responses/BadRequestErrorvalidationLocationData'
+        '400 (3)':
+          $ref: '#/components/responses/BadRequestErrorextensionFile'
+        '400 (4)':
+          $ref: '#/components/responses/BadRequestErrorweightFile'
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: bearer
+      description: |
+        ` API key to authorize requests.
+        ***** eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIi
+              wibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHr
+              HDcEfxjoYZgeFONFh7HgQ ******`
+
+  schemas:
+    Image:
+      allOf:
+        - $ref: '#/components/schemas/DataImage'
+        - type: object
+
+
+
+    DataImage:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        imageFile:
+          type: array
+          items:
+            type: string
+            format: binary
+      example:
+        name: 'someImageName'
+        location: 'in_server'
+        imageFile: ''
+
+
+    ResponseImage:
+      type: object
+      properties:
+        response:
+          type: string
+      example:
+        response: {
+            "imageId":  '/resources/xxxxxx/imageUploaded.jpg',
+            "imageId2":  '/resources/xxxxxx/imageUploaded2.jpg',
+        }
+
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid.
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+
+    BadRequestError:
+      description: Data provided is invalid or not data found.
+
+    BadRequestErrorvalidationFileData:
+      description: The file is required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/responses/BadRequestError'
+          example:
+            status: "error"
+            message: "validation data"
+            type: "file-required"
+
+    BadRequestErrorvalidationLocationData:
+      description: The location is required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/responses/BadRequestError'
+          example:
+            status: 'error'
+            message: 'validation data'
+            type: 'location-required'
+
+    BadRequestErrorextensionFile:
+      description: The extension's file is not permit.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/responses/BadRequestError'
+          example:
+            status: 'error'
+            message: 'Extension not permit'
+            type: 'bad-image-extension'
+
+    BadRequestErrorweightFile:
+      description: The weight's file is to large.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/responses/BadRequestError'
+          example:
+            status: 'error'
+            message: 'Size not permit'
+            type: 'size-to-large'
+
+    UnprocessableEntity:
+      description: A DB restriction was triggered.
+
+security:
+  - basicAuth: []
